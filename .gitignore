@@ -1,0 +1,5 @@
+*~
+*.o
+data/
+
+run_secorder*
