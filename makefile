@@ -7,10 +7,14 @@ CFLAGS = -Wall ${C_OPTIMIZE_SWITCH}
 run_secorder: run_secorder.o secorder_rec_1p.o calc_sqrtcov_rec_1p.o calc_rhos.o calc_stats_1p.o
 	${CC} run_secorder.o secorder_rec_1p.o calc_sqrtcov_rec_1p.o calc_rhos.o calc_stats_1p.o -o run_secorder ${LIBS}
 
+gen_mult_secorder: gen_mult_secorder.o secorder_rec_1p.o calc_sqrtcov_rec_1p.o calc_rhos.o calc_stats_1p.o
+	${CC} gen_mult_secorder.o secorder_rec_1p.o calc_sqrtcov_rec_1p.o calc_rhos.o calc_stats_1p.o -o gen_mult_secorder ${LIBS}
+
 run_secorder_2p: run_secorder_2p.o secorder_rec_2p.o calc_sqrtcov_rec_2p.o calc_rhos.o calc_stats_2p.o
 	${CC} run_secorder_2p.o secorder_rec_2p.o calc_sqrtcov_rec_2p.o calc_rhos.o calc_stats_2p.o -o run_secorder_2p ${LIBS}
 
 run_secorder.o: secorder_rec_1p.hpp calc_stats_1p.hpp
+gen_mult_secorder.o: secorder_rec_1p.hpp calc_stats_1p.hpp
 run_secorder_2p.o: secorder_rec_2p.hpp calc_stats_2p.hpp
 secorder_rec_1p.o: secorder_rec_1p.hpp calc_sqrtcov_rec_1p.hpp calc_rhos.hpp
 secorder_rec_2p.o: secorder_rec_2p.hpp calc_sqrtcov_rec_2p.hpp calc_rhos.hpp calc_stats_2p.hpp
