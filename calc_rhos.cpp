@@ -43,6 +43,18 @@ double calc_rho_given_alpha(double p1, double p2, double alpha,
     status = -1;
     return 0.0;
   }
+  // if alpha is larger than maximum value, return error
+  double max_alpha = 1.0/GSL_MAX_DBL(p1,p2)-1.0;
+  if(alpha > max_alpha) {
+    cerr << "alpha > " << max_alpha << ", which is largest valid alpha given p's\n";
+    status = -1;
+    return 0;
+  }
+  // if alpha is maximum value, set rho to 1
+  if(alpha == max_alpha) {
+    status = 0;
+    return 1;
+  }
   
   // desired second moment among bernoulli random variables
   double b_sec_mom = p1*p2*(1+alpha);
@@ -72,8 +84,15 @@ double calc_rho_given_alpha(double p1, double p2, double alpha,
   // Initialize solver and iterate until converge to solution
   const gsl_root_fsolver_type *T=gsl_root_fsolver_brent;
   gsl_root_fsolver *s = gsl_root_fsolver_alloc(T);
-  gsl_root_fsolver_set(s, &FF, x_lo, x_hi);
+  status = gsl_root_fsolver_set(s, &FF, x_lo, x_hi);
 
+  if(status) {
+    cerr << "Cannot find a value of rho for alpha=" << alpha 
+	 << ", p1=" << p1 << ", and p2=" << p2 << ".\n";
+    status = -1;
+    return 0;
+  }
+  
   do {
     iter++;
     status = gsl_root_fsolver_iterate (s);

@@ -4,6 +4,7 @@
 #include <gsl/gsl_randist.h>
 #include <gsl/gsl_cdf.h>
 #include <gsl/gsl_eigen.h>
+#include <gsl/gsl_errno.h>
 
 #include "calc_sqrtcov_rec_1p.hpp"
 #include "calc_rhos.hpp"
@@ -14,7 +15,7 @@ using namespace std;
 // declare auxiliary functions
 int gen_corr_gaussian(const int N_nodes, double sqrt_diag, double sqrt_recip,
 		      double sqrt_conv, double sqrt_div, double sqrt_chain, 
-              double sqrt_noshare, gsl_matrix *thevars, gsl_rng *rng);
+		      double sqrt_noshare, gsl_matrix *thevars, gsl_rng *rng);
 int calc_gaus_covs(gsl_matrix *W_gaus, int N_nodes,
 		   double &sigma, double &cov_recip,
 		   double &cov_conv, double &cov_div,
@@ -36,13 +37,14 @@ int calc_gaus_covs(gsl_matrix *W_gaus, int N_nodes,
 // alpha_recip: reciprocal connection parameter
 // alpha_conv: convergent connection parameter
 // alpha_div: divergent connection parameter
-// alpha_chain: chain connection parameter
+// cc_chain: chain connection parameter, relative to alpha_conv and alpha_div
+//           valid values between -1 and 1
 //
 // argument rng is pointer to an initialized gsl random number generator
 //
 // returns:
 // 0 if unsuccessful at generating matrix
-//   (not all combinations of alpha are valid)
+//   (not all combinations of alpha/cc are valid)
 // a pointer to allocated gsl_matrix if successful at generating matrix
 // 
 // notation convention is that entry (i,j) is
@@ -51,26 +53,32 @@ int calc_gaus_covs(gsl_matrix *W_gaus, int N_nodes,
 
 gsl_matrix* secorder_rec_1p(int N_nodes, double p, 
 			    double alpha_recip, double alpha_conv, 
-			    double alpha_div, double alpha_chain,
+			    double alpha_div, double cc_chain,
 			    gsl_rng *rng) {
 
   int calc_covs=0;  // if nonzero, calculate covariance of Gaussian
 
   int print_palpha = 1; // print out target values of p and alpha
   int print_rho = 1;    // print out values of rho
-  int print_sqrt = 0;   // print out values of square root of covariance
+  int print_sqrt = 1;   // print out values of square root of covariance
 
   int status;
 
+  gsl_set_error_handler_off();
+
   cout << "Beginning secorder_rec_1p with N_nodes = " << N_nodes  << "\n";
+
+  if(N_nodes <= 0) {
+    cerr << "N_nodes must be positive.  Cannot generate matrix.\n";
+    return 0;
+  }
   
   if(print_palpha) {
     cout << "p = " << p << "\n";
     cout << "alpha_recip = " << alpha_recip
 	 << ", alpha_conv = " << alpha_conv
 	 << ", alpha_div = " << alpha_div
-	 << ", alpha_chain = " << alpha_chain
-	 << "\n";
+	 << ", cc_chain = " << cc_chain << "\n";
     cout.flush();
   }
 
@@ -86,8 +94,6 @@ gsl_matrix* secorder_rec_1p(int N_nodes, double p,
   // edges that do not share a node are to be uncorrelated
   rho_noshare = 0.0;
 
-
-
   rho_recip = calc_rho_given_alpha(p, p, alpha_recip, status);
   if(status)
     return 0;
@@ -98,18 +104,12 @@ gsl_matrix* secorder_rec_1p(int N_nodes, double p,
   if(status)
     return 0;
 
-  // if alpha_chain == -3, then let rho_chain be min possible,
-  // i.e., - geometric mean of rho_conv and rho_div
-  if(alpha_chain <= -3)
-    rho_chain = -sqrt(rho_conv*rho_div);
-  // if alpha_chain == -2, then let rho_chain be max possible,
-  // i.e., geometric mean of rho_conv and rho_div
-  else if(alpha_chain <=-2)
-    rho_chain = sqrt(rho_conv*rho_div);
-  else 
-    rho_chain = calc_rho_given_alpha(p, p, alpha_chain, status);
-  if(status)
+  double max_rho_chain = sqrt(rho_conv*rho_div);
+  if(fabs(cc_chain) > 1) {
+    cerr << "cc_chain must be between -1 and 1.\n";
     return 0;
+  }
+  rho_chain = cc_chain*max_rho_chain;
 
   
   if(print_rho) {
@@ -165,6 +165,10 @@ gsl_matrix* secorder_rec_1p(int N_nodes, double p,
 
 
   gsl_matrix *W_gaus = gsl_matrix_alloc(N_nodes, N_nodes);
+  if(!W_gaus) {
+    cerr << "Unable to allocate memory for Gaussian matrix\n";
+    return 0;
+  }
 
   cout << "Generating gaussian matrix...";
   cout.flush();
@@ -217,6 +221,11 @@ gsl_matrix* secorder_rec_1p(int N_nodes, double p,
   cout.flush();
   // calculate bernoulli matrix
   gsl_matrix *W_ber = gsl_matrix_alloc(N_nodes, N_nodes);
+  if(!W_ber) {
+    cerr << "Unable to allocate memory for Bernoulli matrix\n";
+    return 0;
+  }
+
   for(int i=0; i<N_nodes; i++) {
     for(int j=0; j<N_nodes; j++) {
       gsl_matrix_set(W_ber,i,j,gsl_matrix_get(W_gaus,i,j)>1.0);

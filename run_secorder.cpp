@@ -19,13 +19,14 @@ int main(int argc, char *argv[]) {
   // alpha_recip  determines covariance of reciprocal connections
   // alpha_conv   determines covariance of convergent connections
   // alpha_div    determines covariance of divergent connections
-  // alpha_chain  determines covariance of chain connections
+  // cc_chain     determines covariance of chain, 
+  //              relative to alpha_conv and alpha_div
   // seed         seed for the random number generator (optional)
   ///////////////////////////////////////////////////////////////
 
  
   if(argc < 7 || argc > 8) {
-    cerr << "Requires six or seven parameters: N_nodes p alpha_recip alpha_conv alpha_div alpha_chain [seed]\n";
+    cerr << "Requires six or seven parameters: N_nodes p alpha_recip alpha_conv alpha_div cc_chain [seed]\n";
     exit(-1);
   }
 
@@ -34,7 +35,7 @@ int main(int argc, char *argv[]) {
   double alpha_recip = atof(argv[3]);
   double alpha_conv = atof(argv[4]);
   double alpha_div = atof(argv[5]);
-  double alpha_chain = atof(argv[6]);
+  double cc_chain = atof(argv[6]);
 
   gsl_rng *rng = gsl_rng_alloc(gsl_rng_mt19937);
 
@@ -55,7 +56,7 @@ int main(int argc, char *argv[]) {
     gsl_rng_set(rng, time(NULL));
   
   gsl_matrix *W;
-  W=secorder_rec_1p(N_nodes,p,  alpha_recip, alpha_conv, alpha_div, alpha_chain,
+  W=secorder_rec_1p(N_nodes,p,  alpha_recip, alpha_conv, alpha_div, cc_chain,
 		    rng);
   
     // if failed to generate a matrix, write error and quit
@@ -69,9 +70,9 @@ int main(int argc, char *argv[]) {
   mkdir("data",0755);  // make data directory, if it doesn't exist
   char FNbase[200];
   if(deterministic_seed)
-    sprintf(FNbase,"_%i_%1.3f_%1.3f_%1.3f_%1.3f_%1.3f_%i",N_nodes,p,alpha_recip, alpha_conv, alpha_div, alpha_chain, rng_seed);
+    sprintf(FNbase,"_%i_%1.3f_%1.3f_%1.3f_%1.3f_%1.3f_%i",N_nodes,p,alpha_recip, alpha_conv, alpha_div, cc_chain, rng_seed);
   else
-    sprintf(FNbase,"_%i_%1.3f_%1.3f_%1.3f_%1.3f_%1.3f",N_nodes,p,alpha_recip, alpha_conv, alpha_div, alpha_chain);
+    sprintf(FNbase,"_%i_%1.3f_%1.3f_%1.3f_%1.3f_%1.3f",N_nodes,p,alpha_recip, alpha_conv, alpha_div, cc_chain);
   
   char FN[200];
   FILE *fhnd;
@@ -99,7 +100,7 @@ int main(int argc, char *argv[]) {
   // This should approximately agree with the input alphas
   ////////////////////////////////////////////////////////////
 
-  cout << "Testing statistics of W ...";
+  cout << "Testing statistics of W...";
   cout.flush();
   double phat, alphahat_recip, alphahat_conv, alphahat_div,
     alphahat_chain, alphahat_other;

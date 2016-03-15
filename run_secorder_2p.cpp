@@ -16,8 +16,8 @@ int main(int argc, char *argv[]) {
   // optional flags
   int deterministic_seed = 0; // if nonzero, use for random num gen seed
 
-  int N_nodes[2] = {4000,1000};
-  double p[2][2] = {{1E-10, 0.1},{0.1,0.1}};
+  int N_nodes[2] = {2000,1000};
+  double p[2][2] = {{0.1, 0.1},{0.1,0.1}};
   double alpha_recip[2][2] = {{0.0, 0.0},{99,00}};
 
 

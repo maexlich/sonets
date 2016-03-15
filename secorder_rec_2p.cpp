@@ -92,6 +92,7 @@ gsl_matrix* secorder_rec_2p(int N_nodes[2], double (*p)[2],
   int status;
   int N_nodes_tot= N_nodes[0]+N_nodes[1];
 
+  gsl_set_error_handler_off();
   
   cout << "Beginning secorder_rec_2p with N_nodes = " << N_nodes[0]
        << ", " << N_nodes[1]
@@ -333,6 +334,10 @@ gsl_matrix* secorder_rec_2p(int N_nodes[2], double (*p)[2],
 
   
   gsl_matrix *W_gaus = gsl_matrix_alloc(N_nodes_tot, N_nodes_tot);
+  if(!W_gaus) {
+    cerr << "Unable to allocate memory for Gaussian matrix\n";
+    return 0;
+  }
 
   cout << "Generating Gaussian matrix...";
   cout.flush();
@@ -412,6 +417,10 @@ gsl_matrix* secorder_rec_2p(int N_nodes[2], double (*p)[2],
   cout.flush();
   // calculate bernoulli matrix
   gsl_matrix *W_ber = gsl_matrix_alloc(N_nodes_tot, N_nodes_tot);
+  if(!W_ber) {
+    cerr << "Unable to allocate memory for Bernoulli matrix\n";
+    return 0;
+  }
 
   for(int i=0; i<N_nodes_tot;i++) {
     for(int j=0; j<N_nodes_tot; j++) {

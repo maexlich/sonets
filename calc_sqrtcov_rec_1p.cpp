@@ -16,11 +16,6 @@ int calc_sqrtcov_given_rhos_large_N
  double rho_div, double rho_chain,
  double &sqrt_diag, double &sqrt_recip, double &sqrt_conv,
  double &sqrt_div, double &sqrt_chain);
-int calc_sqrtcov_given_rhos_refine
-(int N, double sigma, double rho_recip, double rho_conv, 
- double rho_div, double rho_chain, double rho_noshare,
- double &sqrt_diag, double &sqrt_recip, double &sqrt_conv,
- double &sqrt_div, double &sqrt_chain, double &sqrt_noshare);
 
 
 //////////////////////////////////////////////////////////////////
@@ -28,16 +23,13 @@ int calc_sqrtcov_given_rhos_refine
 //
 // calculate parameters determining the square root of 
 // the gaussian covariance matrix
-// given the paramters rho determining the covariance structure
+// given the parameters rho determining the covariance structure
 //
 // Since not all combinations of rho are valid
 // it is important to be able to test for valid parameters.
 // This is simple to do in the large N limit, as we can reduce
 // most of the calculation to taking the square root 
 // of a small matrix. 
-// Therefore, first calculate answer in that limit.
-// Then use that estimate as an initial estimate for the 
-// numerical routine to calculate for the general case.
 //////////////////////////////////////////////////////////////////
 int calc_sqrtcov_given_rhos
 (int N, double p, double rho_recip, double rho_conv, 
@@ -49,39 +41,11 @@ int calc_sqrtcov_given_rhos
   // so that probability will be above zero will be p
   double sigma = 1.0/gsl_cdf_ugaussian_Qinv(p);
 
-  // first estimate standard deviations in the limit
-  // of a large network
+  // estimate standard deviations in the limit of a large network
   int status = calc_sqrtcov_given_rhos_large_N
     (N, sigma, rho_recip, rho_conv, rho_div, rho_chain,
      sqrt_diag, sqrt_recip, sqrt_conv, sqrt_div, sqrt_chain);
   sqrt_noshare=0.0;
-
-  if(status)
-    return status;
-  
-  // cout << "Before refine:\n";
-  // cout << "sqrt_diag = " << sqrt_diag
-  // 	 << ", sqrt_recip = " << sqrt_recip
-  // 	 << ", sqrt_conv = " << sqrt_conv
-  // 	 << ", sqrt_div = " << sqrt_div
-  // 	 << ", sqrt_chain = " << sqrt_chain
-  // 	 << "\n";
-
-  if(1) {
-    status = calc_sqrtcov_given_rhos_refine
-      (N, sigma, rho_recip, rho_conv, rho_div, rho_chain, rho_noshare,
-       sqrt_diag, sqrt_recip, sqrt_conv, sqrt_div, sqrt_chain, sqrt_noshare);
-
-
-    // cout << "After refine:\n";
-    // cout << "sqrt_diag = " << sqrt_diag
-    // 	 << ", sqrt_recip = " << sqrt_recip
-    // 	 << ", sqrt_conv = " << sqrt_conv
-    // 	 << ", sqrt_div = " << sqrt_div
-    // 	 << ", sqrt_chain = " << sqrt_chain
-    // 	 << "\n";
-
-  }
 
   return status;
 
@@ -137,7 +101,8 @@ int calc_sqrtcov_given_rhos_large_N
 	// if have a negative eigenvalue, can't take square root
 	// system of equations does not have a real solution
 	// (at least in limit of large N)
-	cout << "Found a negative eval(" << i <<")=" << the_eval << "\n";
+	cerr << "Found a negative eval(" << i <<")=" << the_eval << "\n";
+	cerr << "Cannot generate a network with combination of rho_conv, rho_div, and rho_chain.\n";
 	gsl_eigen_symmv_free(work_eig);
 	gsl_matrix_free(A);
 	gsl_matrix_free(sqrtA);
@@ -168,6 +133,21 @@ int calc_sqrtcov_given_rhos_large_N
   double temp1=sigma*sigma-(N-2.0)*(gsl_pow_2(sqrt_conv)
 				    + gsl_pow_2(sqrt_div)
 				    + 2.0*gsl_pow_2(sqrt_chain));
+
+  // if temp1 is negative, will not be able to determine sqrt_diag
+  // independent of value of rho_recip
+  if(temp1 < 0) {
+    cerr << "Can't calculate sqrt_diag\n";
+    cerr << "Cannot generate a network with combination of rho_conv, rho_div, and rho_chain.\n";
+    gsl_eigen_symmv_free(work_eig);
+    gsl_matrix_free(A);
+    gsl_matrix_free(sqrtA);
+    gsl_matrix_free(evecs);
+    gsl_vector_free(evals);
+    return -1;
+  }
+   
+
   double temp2 = sigma*sigma*rho_recip
     -2*(N-2.0)*(sqrt_conv+sqrt_div)*sqrt_chain;
   
@@ -178,7 +158,22 @@ int calc_sqrtcov_given_rhos_large_N
   else {
     // if can't get real solution to sqrt_diag, original system did
     // not have a real solution (at least for large N)
-    cout << "Can't calculate sqrt_diag\n";
+    cerr << "Can't calculate sqrt_diag\n";
+
+    double temp2a = 2*(N-2.0)*(sqrt_conv+sqrt_div)*sqrt_chain;
+    double rho_recip_max = GSL_MIN_DBL((fabs(temp1)+temp2a)/(sigma*sigma),1);
+    double rho_recip_min = GSL_MAX_DBL((-fabs(temp1)+temp2a)/(sigma*sigma),-1);
+    
+    if(rho_recip_max > rho_recip_min) {
+      cerr << "Cannot generate network when combine rho_recip with other parameters\n";
+      cerr << "Valid range of rho_recip given values of other parameters: ";
+      cerr << "[" << rho_recip_min << ", " << rho_recip_max << "]\n";
+      cerr << "(Specified value of rho_recip = " << rho_recip << ")\n";
+    }
+    else {
+      cerr << "Cannot generate a network with combination of rho_conv, rho_div, and rho_chain.\n";
+    }
+
     gsl_eigen_symmv_free(work_eig);
     gsl_matrix_free(A);
     gsl_matrix_free(sqrtA);
@@ -199,162 +194,4 @@ int calc_sqrtcov_given_rhos_large_N
 
   return 0;
 
-
-}
-
-
-
-// structure to hold the parameters for 
-// the numerical routine calculating sqrt in general case
-struct onepop_params
-{
-  double sigma;
-  double rho_recip;
-  double rho_conv;
-  double rho_div;
-  double rho_chain;
-  double rho_noshare;
-  int N;
-};
-
-
-
-// function to solve in order to determine
-// square root of covariance
-int onepop_f(const gsl_vector * x, void *params,
-	    gsl_vector * f) {
-
-  double sigma = ((struct onepop_params *) params)->sigma;
-  double rho_recip = ((struct onepop_params *) params)->rho_recip;
-  double rho_conv = ((struct onepop_params *) params)->rho_conv;
-  double rho_div = ((struct onepop_params *) params)->rho_div;
-  double rho_chain = ((struct onepop_params *) params)->rho_chain;
-  double rho_noshare = ((struct onepop_params *) params)->rho_noshare;
-  int N= ((struct onepop_params *) params)->N;
-
-  double a, b, c, d, e, ff;
-  
-  a = gsl_vector_get(x,0);
-  b = gsl_vector_get(x,1);
-  c = gsl_vector_get(x,2);
-  d = gsl_vector_get(x,3);
-  e = gsl_vector_get(x,4);
-  ff= gsl_vector_get(x,5);
-  
-  double f_diag, f_recip, f_conv, f_div, f_chain, f_noshare;
-  double sigma2=sigma*sigma;
-
-  f_diag =  gsl_pow_2(a) + gsl_pow_2(b) 
-    + (N-2.0)*(gsl_pow_2(c)+gsl_pow_2(d) + 2*gsl_pow_2(e))
-    + (N-2.0)*(N-3.0)*gsl_pow_2(ff)
-    - sigma2;
-
-  f_recip =  2*a*b +2*(N-2.0)*(c*e + d*e)-sigma2*rho_recip
-    + (N-2.0)*(N-3.0)*gsl_pow_2(ff);
-
-  f_conv =  2*a*c+2*e*(b+d)+(N-3.0)*(gsl_pow_2(c) + gsl_pow_2(e) + 2*(d+e)*ff)
-    + (N-3.0)*(N-4.0)*gsl_pow_2(ff)
-    - sigma2*rho_conv;
-  
-  f_div = 2*a*d+ 2*e*(b+c)+(N-3.0)*(gsl_pow_2(d) + gsl_pow_2(e) + 2*(c+e)*ff)
-    + (N-3.0)*(N-4.0)*gsl_pow_2(ff)
-    - sigma2*rho_div;
-
-  f_chain = 2*a*e + b*(c +d) + c*d + gsl_pow_2(e) +(N-3.0)*e*(c+d)
-    + (N-3.0)*ff*(c+d+2*e) + (N-3.0)*(N-4.0)*gsl_pow_2(ff)
-    -sigma2*rho_chain;
-  
-  f_noshare = 2*ff*(a+b)+2*e*(c+d)+2*c*d+2*gsl_pow_2(e)
-    + 2*(N-4.0)*ff*(c+d+2*e) + (N-4.0)*(N-5.0)*gsl_pow_2(ff)
-    - sigma2*rho_noshare;
-  
-  gsl_vector_set(f,0,f_diag);
-  gsl_vector_set(f,1,f_recip);
-  gsl_vector_set(f,2,f_conv);
-  gsl_vector_set(f,3,f_div);
-  gsl_vector_set(f,4,f_chain);
-  gsl_vector_set(f,5,f_noshare);
-
-
-  return GSL_SUCCESS;
-}
-
-
-// calculate the components of the sqrt of the covariance matrix
-// in the general case
-// Since this is a numerical root finding calculation,
-// it depends on a good initial guess, which was found
-// from the large N limit and passed as the
-// initial values of the sqrt_pars
-int calc_sqrtcov_given_rhos_refine
-(int N, double sigma, double rho_recip, double rho_conv, 
- double rho_div, double rho_chain, double rho_noshare,
- double &sqrt_diag, double &sqrt_recip, double &sqrt_conv,
- double &sqrt_div, double &sqrt_chain, double &sqrt_noshare) {
-
-
-  
-  const gsl_multiroot_fsolver_type *T;
-  gsl_multiroot_fsolver *s;
-  
-  int status;
-  const size_t n = 6;
-  struct onepop_params p = { sigma,rho_recip, 
-  			    rho_conv, rho_div,
-  			     rho_chain, rho_noshare, N};
-                 
-  gsl_multiroot_function f = {&onepop_f, n, &p};
-
-
-  // set initial state based on the sqrt parameters passed into the function
-  gsl_vector *x = gsl_vector_alloc (n);
-
-  gsl_vector_set(x,0,sqrt_diag);
-  gsl_vector_set(x,1,sqrt_recip);
-  gsl_vector_set(x,2,sqrt_conv);
-  gsl_vector_set(x,3,sqrt_div);
-  gsl_vector_set(x,4,sqrt_chain);
-  gsl_vector_set(x,5,sqrt_noshare);
-
-  
-  T = gsl_multiroot_fsolver_hybrids;
-  s = gsl_multiroot_fsolver_alloc (T, n);
-  gsl_multiroot_fsolver_set (s, &f, x);
-
-  int iter=0;
-  do
-    {
-      iter++;
-      status = gsl_multiroot_fsolver_iterate (s);
-      
-      if (status)   /* check if solver is stuck */
-	break;
-      
-      status =
-	gsl_multiroot_test_residual (s->f, 1e-7);
-    }
-  while (status == GSL_CONTINUE && iter < 1000);
-  
-  // cout << "After " << iter << " iterations of solver, square root refine status = "
-  //      << gsl_strerror(status) << "\n";
-
-  // if had problems, don't modify values of sqrt parameter
-  if(status) {
-    gsl_multiroot_fsolver_free(s);
-    gsl_vector_free(x);
-    return(status);
-  }
-
-  // else set sqrt parameters to result of function
-  sqrt_diag = gsl_vector_get(s->x,0);
-  sqrt_recip = gsl_vector_get(s->x,1);
-  sqrt_conv = gsl_vector_get(s->x,2);
-  sqrt_div = gsl_vector_get(s->x,3);
-  sqrt_chain = gsl_vector_get(s->x,4);
-  sqrt_noshare=gsl_vector_get(s->x,5);
-
-  gsl_multiroot_fsolver_free(s);
-  gsl_vector_free(x);
-
-  return 0;
 }
