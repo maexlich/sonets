@@ -3,8 +3,10 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <gsl/gsl_rng.h>
+#include <gsl/gsl_math.h>
 #include "secorder_rec_1p.hpp"
 #include "calc_stats_1p.hpp"
+#include "calc_rhos.hpp"
 
 
 using namespace std;
@@ -109,6 +111,13 @@ int main(int argc, char *argv[]) {
 			alphahat_conv, alphahat_div,
 			alphahat_chain, alphahat_other);
 
+  // calculate alpha_chain from alpha_conv, alpha_div, and cc_chain
+  int status;
+  double rho_conv = calc_rho_given_alpha(p, p, alpha_conv, status);
+  double rho_div = calc_rho_given_alpha(p, p, alpha_div, status);
+  double rho_chain = cc_chain*sqrt(rho_conv*rho_div);
+  double alpha_chain = calc_alpha_given_rho(p, p, rho_chain, status);
+
   strcpy(FN, "data/stats");
   strcat(FN, FNbase);
   strcat(FN, ".dat");
@@ -119,12 +128,20 @@ int main(int argc, char *argv[]) {
   }
   fprintf(fhnd, "%e %e %e %e %e %e\n", phat, alphahat_recip, 
 	  alphahat_conv, alphahat_div, alphahat_chain, alphahat_other);
+  fprintf(fhnd, "%e %e %e %e %e %e\n", p, alpha_recip, 
+	  alpha_conv, alpha_div, alpha_chain, cc_chain);
   fclose(fhnd);
 
 
   cout << "done\n";
-  cout << "\nActual statistics of matrix:\n";
-  cout << "phat = " << phat << "\n";
+  cout << "\nComparison of prescribed to actual statistics of matrix:\n";
+  cout << "p = " << p << ", phat = " << phat << "\n";
+  cout << "alphas:\n";
+  cout << "alpha_recip = " << alpha_recip
+       << ", alpha_conv = " << alpha_conv
+       << ", alpha_div = " << alpha_div
+       << ", alpha_chain = " << alpha_chain
+       << ", alpha_other = 0\n";
   cout << "alphahats:\n";
   cout << "alpha_recip = " << alphahat_recip
        << ", alpha_conv = " << alphahat_conv

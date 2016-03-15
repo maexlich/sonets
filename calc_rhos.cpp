@@ -157,3 +157,38 @@ double integrate_gaussian(double rho0, void *parameters){
   return res;
 
 }
+
+
+
+double calc_alpha_given_rho(double p1, double p2, double rho, int &status) {
+
+  // if correlation or a probability is zero, return alpha=0
+  if(rho==0 || p1==0 || p2==0) {
+    status = 0;
+    return 0.0;
+  }
+  if(rho < -1) {
+    cerr << "rho < -1, cannot calc alpha" << endl;
+    status = -1;
+    return 0.0;
+  }
+  if(rho > 1) {
+    cerr << "rho > 1, cannot calc alpha" << endl;
+    status = -1;
+    return 0.0;
+  }
+
+  // set up gsl function FF to point to function
+  // integrate_gaussian with
+  // parameters determined by arguments p and bcorr
+  struct int_gauss_params para;
+  para.p1 = p1;
+  para.p2 = p2;
+  para.sec_mom = 0;  // set desired second moment to zero so nothing subtracted
+
+  double sec_mom = integrate_gaussian(rho, &para);
+
+  double alpha = sec_mom/(p1*p2) -1;
+
+  return alpha;
+}
