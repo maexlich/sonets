@@ -3,8 +3,8 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <gsl/gsl_rng.h>
-#include "secorder_rec_2p.hpp"
-#include "calc_stats_2p.hpp"
+#include "lib/secorder_rec_2p.hpp"
+#include "lib/calc_stats_2p.hpp"
 
 
 using namespace std;

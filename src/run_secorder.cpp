@@ -4,9 +4,9 @@
 #include <sys/stat.h>
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_math.h>
-#include "secorder_rec_1p.hpp"
-#include "calc_stats_1p.hpp"
-#include "calc_rhos.hpp"
+#include "lib/secorder_rec_1p.hpp"
+#include "lib/calc_stats_1p.hpp"
+#include "lib/calc_rhos.hpp"
 
 
 using namespace std;

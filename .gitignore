@@ -1,6 +1,7 @@
 *~
 *.o
 data/
-
+bin/
+build/
 run_secorder*
 gen_mult_secorder

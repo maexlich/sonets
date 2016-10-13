@@ -1,4 +1,6 @@
-# sonets
+# sonets_cmake
+This is a cmake port of dqnykamp sonets library
+
 Generates Second Order Networks (SONETs) with prescribed second order motif frequencies
 
 ## Overview
